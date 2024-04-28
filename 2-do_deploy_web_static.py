@@ -1,55 +1,49 @@
 #!/usr/bin/python3
+# Fabfile to distribute an archive to a web server.
+import os.path
+from fabric.api import env
+from fabric.api import put
+from fabric.api import run
 
-"""Script (based on the file 1-pack_web_static.py) that distributes
-    an archive to your web servers, using the function do_deploy
-"""
-
-from fabric.api import env, put, run
-import os
-
-env.hosts = [
-            '18.234.107.151',
-            '54.164.149.90'
-        ]
-
-env.user = "ubuntu"
-env.key_filename = "~/.ssh/id_rsa"
+env.hosts = ["54.164.149.90", "18.234.107.151"]
 
 
 def do_deploy(archive_path):
-    """Function to distribute an archive to web servers
+    """Distributes an archive to a web server.
+
+    Args:
+        archive_path (str): The path of the archive to distribute.
+    Returns:
+        If the file doesn't exist at archive_path or an error occurs - False.
+        Otherwise - True.
     """
-    if not os.path.exists(archive_path):
-        return (False)
+    if os.path.isfile(archive_path) is False:
+        return False
+    file = archive_path.split("/")[-1]
+    name = file.split(".")[0]
 
-    archive_name = archive_path.split('/')[-1]
-    name = archive_name.split('.')[0]
-    uncompress_path = "/data/web_static/releases/{}".format(name)
-    uncompress_cmd = "sudo tar -xzf /tmp/{} -C {}"\
-                     .format(archive_name, uncompress_path)
-    create_path = "sudo mkdir -p {}".format(uncompress_path)
-    remove_archive = "sudo rm -rf /tmp/{}".format(archive_name)
-    move = "sudo mv {}/web_static/* {}"\
-           .format(uncompress_path, uncompress_path)
-    remove_web_static = "sudo rm -rf {}/web_static".format(uncompress_path)
-    link_archive = "sudo ln -s {} /data/web_static/current"\
-                   .format(uncompress_path)
-
-    if put(archive_path, '/tmp/').failed is True:
-        return (False)
-    if run(create_path).failed is True:
-        return (False)
-    if run(uncompress_cmd).failed is True:
-        return (False)
-    if run(remove_archive).failed is True:
-        return (False)
-    if run(move).failed is True:
-        return (False)
-    if run(remove_web_static).failed is True:
-        return (False)
-    if run("sudo rm -rf /data/web_static/current").failed is True:
-        return (False)
-    if run(link_archive).failed is True:
-        return (False)
-    print("New version deployed!")
-    return (True)
+    if put(archive_path, "/tmp/{}".format(file)).failed is True:
+        return False
+    if run("rm -rf /data/web_static/releases/{}/".
+           format(name)).failed is True:
+        return False
+    if run("mkdir -p /data/web_static/releases/{}/".
+           format(name)).failed is True:
+        return False
+    if run("tar -xzf /tmp/{} -C /data/web_static/releases/{}/".
+           format(file, name)).failed is True:
+        return False
+    if run("rm /tmp/{}".format(file)).failed is True:
+        return False
+    if run("mv /data/web_static/releases/{}/web_static/* "
+           "/data/web_static/releases/{}/".format(name, name)).failed is True:
+        return False
+    if run("rm -rf /data/web_static/releases/{}/web_static".
+           format(name)).failed is True:
+        return False
+    if run("rm -rf /data/web_static/current").failed is True:
+        return False
+    if run("ln -s /data/web_static/releases/{}/ /data/web_static/current".
+           format(name)).failed is True:
+        return False
+    return True
