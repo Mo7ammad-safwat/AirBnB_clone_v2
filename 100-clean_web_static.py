@@ -19,22 +19,19 @@ repeate = None
 def del_versions(versions, number=0, loc=None):
     """Delete files from versions
     """
-    versions_split = versions.split()
-    versions_split.sort()
-    if number == 0:
-        versions_len = len(versions_split) - 1
+    versions_split = versions.strip().split()
+    versions_split.sort(reverse=True)  # Sort descending to easily keep the newest
+    if number > 0:
+        versions_to_delete = versions_split[number:]  # Exclude the 'number' of recent files
     else:
-        versions_len = len(versions_split) - number
+        versions_to_delete = versions_split[1:]  # Default to keeping the newest file
 
-    for ver in range(versions_len):
-        if loc is not None:
-            cmd = f"sudo rm -f versions/{versions_split[ver]}"
+    for ver in versions_to_delete:
+        cmd = f"sudo rm -f {'versions/' if loc else '/data/web_static/releases/'}{ver}"
+        if loc:
             local(cmd)
         else:
-            if versions_split[ver].startswith("web_static_"):
-                cmd = "sudo rm -rf /data/web_static/releases/{}"\
-                      .format(versions_split[ver])
-                run(cmd)
+            run(cmd)
 
 
 def do_clean(number=0):
